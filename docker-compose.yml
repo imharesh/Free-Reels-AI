@@ -1,0 +1,44 @@
+services:
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+
+  api:
+    build: .
+    entrypoint: ["npx", "tsx", "src/server.ts"]
+    ports:
+      - "3000:3000"
+    depends_on:
+      - redis
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JOBS_DIR=/app/jobs
+    volumes:
+      - jobs-data:/app/jobs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    build: .
+    entrypoint: ["npx", "tsx", "src/worker.ts"]
+    depends_on:
+      - redis
+    env_file: .env
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - JOBS_DIR=/app/jobs
+    shm_size: "2gb"
+    volumes:
+      - jobs-data:/app/jobs
+      - ./output:/output
+      - freereels-cache:/root/.freereels/cache
+    restart: unless-stopped
+
+volumes:
+  jobs-data:
+  freereels-cache:

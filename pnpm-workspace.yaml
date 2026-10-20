@@ -1,0 +1,11 @@
+packages:
+  - 'web'
+  - 'docs'
+
+allowBuilds:
+  esbuild: true
+  onnxruntime-node: true
+  sharp: true
+  msgpackr-extract: false
+  msw: false
+  protobufjs: false

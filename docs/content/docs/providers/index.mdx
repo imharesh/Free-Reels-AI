@@ -1,0 +1,83 @@
+---
+title: Providers
+description: Overview of all provider categories in Free Reels AI — LLM, TTS, image, video, music, and stock footage — with the provider matrix and cost comparison.
+---
+
+Free Reels AI uses a pluggable provider system. Each stage of the pipeline (scripting, voiceover, visuals, music) can use a different provider. You pick what fits your budget and quality needs.
+
+## Provider matrix
+
+| Capability | Providers | Env var |
+|-----------|-----------|---------|
+| **LLM** | Anthropic Claude, OpenAI GPT, Google Gemini, OpenRouter, any OpenAI-compatible | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, `OPENROUTER_API_KEY`, `FREEREELS_LLM_API_KEY` |
+| **Search** | Native (provider built-in), Tavily, None (parametric) | `TAVILY_API_KEY` |
+| **TTS** | ElevenLabs, Inworld, OpenAI TTS, Gemini TTS, Kokoro (free, local) | `ELEVENLABS_API_KEY`, `INWORLD_TTS_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`, none |
+| **Images** | Gemini Imagen, OpenAI DALL-E | `GOOGLE_API_KEY`, `OPENAI_API_KEY` |
+| **Video** | Google Veo, fal.ai Kling | `GOOGLE_API_KEY`, `FAL_API_KEY` |
+| **Music** | Google Lyria 3 Pro, Bundled library (free) | `GOOGLE_API_KEY`, none |
+| **Stock** | Pexels, Pixabay | `PEXELS_API_KEY`, `PIXABAY_API_KEY` |
+
+## The `--provider` flag
+
+The `--provider` flag sets the **LLM** provider. It also acts as a convenience shortcut for ecosystem-wide configuration:
+
+| Value | What it sets |
+|-------|-------------|
+| `anthropic` | LLM only (default). Other providers use their own flags. |
+| `openai` | LLM only. |
+| `gemini` | LLM only. |
+| `google` | LLM (Gemini) + Image (Gemini Imagen) + TTS (Gemini TTS) + Video (Veo) + Music (Lyria). One `GOOGLE_API_KEY` for everything. |
+| `local` | LLM (your default) + TTS (Kokoro, free local). No TTS API key needed. |
+
+Individual provider flags override the `--provider` shortcut:
+
+```bash
+# Google for everything except TTS — use ElevenLabs for voiceover
+pnpm start "topic" --provider google --tts-provider elevenlabs
+```
+
+## Provider keys
+
+Hosted providers require their API keys in the environment (for example, in your `.env` file). The Settings page reports which server-side keys are configured; it does not accept or store keys.
+
+For scripting and voiceover, choose one LLM option and one TTS option. A local Ollama model and Kokoro do not require API keys. The complete pipeline may still require hosted visual-provider credentials; stock media can be used when configured and suitable results are available.
+
+See [API Keys](/docs/getting-started/api-keys) for provider-specific keys and setup.
+
+## Cost comparison
+
+Before every run, the pipeline shows a cost estimate and asks for confirmation. After rendering, actual cost is computed from real token usage.
+
+| Provider category | Cheapest option | Mid-range | Premium |
+|------------------|----------------|-----------|---------|
+| **LLM** | Gemini 2.5 Flash (~$0.001/run) | OpenAI GPT ($0.01-0.03/run) | Anthropic Claude ($0.05-0.10/run) |
+| **TTS** | Kokoro (free) | Gemini TTS / Inworld (~$0.01/run) | ElevenLabs (~$0.15/run) |
+| **Images** | Gemini Imagen ($0.101/image) | -- | OpenAI DALL-E ($0.167/image) |
+| **Video** | Veo 3.1 Lite ($0.30/6s clip) | -- | fal.ai Kling ($0.35/5s clip) |
+| **Music** | Bundled (free) | -- | Lyria 3 Pro ($0.08/track) |
+| **Stock** | Pexels / Pixabay (free) | -- | -- |
+
+A typical run with hosted Google providers can cost under $1, depending on the script and selected assets. Kokoro TTS and bundled music avoid those provider charges, but hosted AI image or video generation may still cost extra.
+
+Use `--dry-run` to preview the DirectorScore and cost estimate without spending anything:
+
+```bash
+pnpm start "your topic" --dry-run
+```
+
+## All provider flags
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--provider <name>` | LLM provider (`anthropic`, `openai`, `gemini`, `google`, `local`) | `anthropic` |
+| `--tts-provider <name>` | TTS provider (`elevenlabs`, `inworld`, `kokoro`, `gemini-tts`, `openai-tts`) | `elevenlabs` |
+| `--image-provider <name>` | Image provider (`gemini`, `openai`) | `gemini` |
+| `--video-provider <name>` | Video provider (`gemini`, `fal`) | auto-detect |
+| `--music-provider <name>` | Music provider (`bundled`, `lyria`) | `bundled` |
+| `--video-model <model>` | Override the default video model | provider default |
+| `--kokoro-voice <voice>` | Kokoro voice preset | `af_heart` |
+| `--no-music` | Disable background music | music on |
+| `--no-video` | Disable AI video generation | video on |
+| `--no-stock-verify` | Disable VLM stock footage verification | verify on |
+| `--stock-confidence <n>` | Min confidence for stock verification (0-1) | `0.6` |
+| `--stock-max-attempts <n>` | Max stock API calls per scene | `4` |

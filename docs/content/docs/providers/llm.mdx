@@ -1,0 +1,141 @@
+---
+title: LLM Providers
+description: Configure the LLM provider for scripting, research, and creative direction — Anthropic, OpenAI, Gemini, OpenRouter, or any OpenAI-compatible endpoint.
+---
+
+The LLM provider handles all text generation in the pipeline: web research, script writing (Creative Director), image/video prompt optimization, stock query reformulation, and quality critique. Free Reels AI uses the [Vercel AI SDK](https://sdk.vercel.ai/) under the hood, so all providers share the same structured output and tool-calling interface.
+
+## Supported providers
+
+| Provider | Default model | Env var | Flag value |
+|----------|--------------|---------|------------|
+| Anthropic Claude | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` | `anthropic` |
+| OpenAI GPT | `gpt-5.4` | `OPENAI_API_KEY` | `openai` |
+| Google Gemini | `gemini-2.5-flash` | `GOOGLE_API_KEY` | `gemini` |
+| OpenRouter | `anthropic/claude-sonnet-4` | `OPENROUTER_API_KEY` | `openrouter` |
+| Custom (OpenAI-compatible) | *(must specify)* | `FREEREELS_LLM_API_KEY` | `openai-compatible` |
+
+## Usage
+
+Set the LLM provider with the `--provider` flag:
+
+```bash
+pnpm start "the apollo 13 disaster" --provider anthropic
+pnpm start "the apollo 13 disaster" --provider openai
+pnpm start "the apollo 13 disaster" --provider gemini
+```
+
+### OpenRouter
+
+Access 300+ models through a single API key:
+
+```bash
+pnpm start "the apollo 13 disaster" --provider openrouter
+pnpm start "the apollo 13 disaster" --provider openrouter --llm-model google/gemini-2.5-flash
+```
+
+### OpenAI-compatible endpoints
+
+Use any endpoint that speaks the OpenAI API (local Ollama, Together, Groq, vLLM):
+
+```bash
+pnpm start "the apollo 13 disaster" --provider openai-compatible \
+  --llm-base-url http://localhost:11434/v1 \
+  --llm-model llama3:8b \
+  --search-provider none
+```
+
+### Model override
+
+Override the default model for any provider with `--llm-model`:
+
+```bash
+pnpm start "topic" --provider anthropic --llm-model claude-opus-4-6
+```
+
+### Convenience shortcuts
+
+The `google` shortcut sets the LLM to Gemini along with all other providers to their Google equivalents:
+
+```bash
+# Sets LLM=Gemini, Image=Gemini, TTS=Gemini, Video=Veo, Music=Lyria
+pnpm start "the apollo 13 disaster" --provider google
+```
+
+## Environment variables
+
+Each provider reads its API key from a specific environment variable:
+
+```bash
+# .env
+ANTHROPIC_API_KEY=sk-ant-...       # Anthropic Console
+OPENAI_API_KEY=sk-...              # OpenAI Platform
+GOOGLE_API_KEY=AI...               # Google AI Studio
+OPENROUTER_API_KEY=sk-or-...       # OpenRouter
+FREEREELS_LLM_API_KEY=...          # For custom OpenAI-compatible endpoints
+```
+
+Only the key for your chosen provider is required. If you use `--provider gemini`, you only need `GOOGLE_API_KEY`.
+
+For local Ollama, no API key is needed. Use a local model that supports structured JSON output. If the pipeline verifies stock images, use a vision-capable model or disable stock verification with `--no-stock-verify`. Ollama's cloud models currently do not support the structured outputs this pipeline uses, so prefer a local Ollama model for this integration.
+
+## How the LLM is used
+
+The pipeline makes several LLM calls per run:
+
+| Call | Purpose |
+|------|---------|
+| **Research** | Two-pass web search: first pass uses search tools (native or Tavily), second pass structures the results. Falls back to parametric knowledge when no search is available. |
+| **Creative Director** | Writes the DirectorScore — script, scene breakdowns, visual direction, emotional arc |
+| **Image Prompter** | Optimizes visual prompts for AI image/video generation per scene |
+| **Stock Query Reform** | Reformulates stock search queries when initial results are rejected |
+| **Critic** | Scores the final output and decides whether to re-run |
+| **VLM Verification** | Vision model verifies stock footage matches the requested visual |
+
+## Search providers
+
+Control how the research agent searches the web with `--search-provider`:
+
+| Search provider | Description | Flag value |
+|----------------|-------------|------------|
+| Native | Uses provider's built-in search (Anthropic, OpenAI, Gemini only) | `native` |
+| Tavily | Third-party AI search API, works with any LLM provider | `tavily` |
+| None | No web search, uses model's training knowledge | `none` |
+
+Native providers use their built-in search tools by default:
+- **Anthropic** — `webSearch_20250305` tool
+- **OpenAI** — `webSearch` tool
+- **Gemini** — `googleSearch` tool
+
+OpenRouter and OpenAI-compatible providers auto-detect Tavily if `TAVILY_API_KEY` is set, otherwise fall back to parametric knowledge.
+
+```bash
+# Override search on any provider
+pnpm start "topic" --provider anthropic --search-provider tavily
+# Disable search entirely
+pnpm start "topic" --provider openrouter --search-provider none
+```
+
+Tavily requires `TAVILY_API_KEY` (free tier: 1000 searches/month at [tavily.com](https://tavily.com)).
+
+## Cost comparison
+
+LLM costs are typically the smallest part of the total bill. A typical run uses 3-7 LLM calls.
+
+| Provider | Input token price | Output token price | Typical run cost |
+|----------|------------------|--------------------|-----------------|
+| Gemini 2.5 Flash | $0.10/M tokens | $0.40/M tokens | ~$0.001 |
+| OpenAI GPT | $2.00/M tokens | $8.00/M tokens | ~$0.01-0.03 |
+| Anthropic Claude | $3.00/M tokens | $15.00/M tokens | ~$0.05-0.10 |
+
+Gemini is roughly 30x cheaper than Anthropic per token. For budget-conscious runs, combine `--provider gemini` with `--tts-provider kokoro` and `--music-provider bundled`.
+
+## VLM verification model
+
+Stock footage verification uses a separate VLM (Vision Language Model) call. By default, this uses the same provider as your main LLM. The verification model examines downloaded stock footage and scores how well it matches the requested visual. The models used for verification are:
+
+- **Anthropic** — `claude-sonnet-4-6`
+- **OpenAI** — `gpt-4o`
+- **Gemini** — `gemini-2.5-flash`
+- **OpenRouter** — `anthropic/claude-sonnet-4` (or your `--llm-model`)
+- **OpenAI-compatible** — falls back to Anthropic if no `FREEREELS_LLM_BASE_URL` is set

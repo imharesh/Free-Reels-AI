@@ -1,0 +1,134 @@
+---
+title: Caption Styles
+description: The 7 caption styles available in Free Reels AI, how they render, and which archetypes use them.
+---
+
+Free Reels AI includes 7 caption styles with spring-animated word-level highlighting synchronized to the voiceover. Captions render as a single layer on top of the full video composition using absolute timestamps from the complete voiceover track.
+
+## How captions work
+
+All caption styles share a common rendering pipeline via the `CaptionWrapper` abstraction:
+
+1. The TTS provider generates voiceover audio with per-word start/end timestamps
+2. `CaptionWrapper` converts the current frame to a time position and selects a chunk of words
+3. Each word is classified into one of three states: **unspoken** (upcoming), **active** (currently being spoken), or **spoken** (already said)
+4. A Remotion `spring()` animation drives smooth transitions as words activate
+5. A 6-frame fade-in animates each new chunk's entrance
+
+### Three-state word rendering
+
+Unlike simple on/off highlighting, each word passes through three visual states:
+
+- **Unspoken**: dimmed, smaller font, reduced opacity. The viewer can read ahead.
+- **Active**: bright, spring-animated scale-up, full opacity. The currently-spoken word stands out.
+- **Spoken**: settled, slightly dimmer than active but brighter than unspoken. Already-said words stay legible.
+
+The active word is the one where `currentTime >= word.start && currentTime < word.end`. This creates a "bouncing ball" karaoke effect that guides the viewer's eye.
+
+### Archetype-aware tuning
+
+Each archetype can configure:
+
+- **`captionChunkSize`**: how many words appear at once (default: 5). Fast archetypes use 6, cinematic use 4.
+- **`captionLingerS`**: how long a chunk stays visible after its last word is spoken (default: 0.3s). Cinematic archetypes linger for 0.5s, fast archetypes for 0.15s.
+- **Accent color**: KaraokeSweep, ColorHighlight, and BoxHighlight use the archetype's `colorPalette.accent` instead of hardcoded colors.
+
+Chunks advance immediately when the next chunk's first word starts speaking, even if the current chunk is still within its linger window. This prevents words from being hidden during the transition.
+
+### Per-style spring physics
+
+Each style has its own spring configuration that controls how the word activation animation feels:
+
+| Style | Spring feel | Damping | Stiffness |
+|-------|------------|---------|-----------|
+| `bold_outline` | Punchy | 15 | 250 |
+| `clean` | Balanced | 12 | 200 |
+| `gradient_rise` | Elegant | 8 | 150 |
+| `box_highlight` | Smooth | 10 | 180 |
+| `karaoke_sweep` | Precise | 14 | 220 |
+| `color_highlight` | Balanced | 12 | 200 |
+| `block_impact` | Snappy | 18 | 300 |
+
+## The 7 styles
+
+### `clean`
+
+**Font:** Inter (400/500/700) | **Spring:** Balanced
+
+Minimal and legible. Active words spring from 44px to 52px with a weight jump to bold. Spoken words settle to 75% white. Unspoken words sit at 40% opacity. No background, just a subtle text shadow. The least visually intrusive style.
+
+### `bold_outline`
+
+**Font:** Montserrat (700/900) | **Spring:** Punchy
+
+High-impact uppercase text with thick black stroke outlines. Active words spring from 48px to 56px with stroke width growing from 2px to 3px. Spoken words settle at 85% opacity. Designed to be readable over busy, colorful visuals.
+
+### `karaoke_sweep`
+
+**Font:** Montserrat (700) | **Spring:** Precise
+
+A gradient wipe fills left-to-right behind the active word, creating a progress-bar effect. Once spoken, words show a solid accent-colored background. Unspoken words have no background. Uses the archetype's accent color.
+
+### `color_highlight`
+
+**Font:** Montserrat (700) | **Spring:** Balanced
+
+Spotlight effect: only the **active** word gets an accent-colored background. Spoken words lose the highlight entirely, creating a bouncing spotlight that jumps word-to-word. Uses the archetype's accent color. Visually distinct from KaraokeSweep.
+
+### `gradient_rise`
+
+**Font:** Playfair Display (400/700) | **Spring:** Elegant
+
+Spoken and active words render with a purple-to-red gradient (`#9F7AEA` to `#E53E3E`) applied via `background-clip: text`. The active word gets a purple glow drop-shadow. Active words spring from 48px to 56px. Uses a serif font for an elegant feel.
+
+### `block_impact`
+
+**Font:** Oswald (700) | **Spring:** Snappy
+
+Words render inside a semi-transparent black container with rounded corners. Active words flash bright white with a spring from 48px to 54px. Spoken words settle to 70% white. Uppercase with letter spacing. The dark background ensures readability over any visual.
+
+### `box_highlight`
+
+**Font:** Montserrat (700) | **Spring:** Smooth
+
+The active word gets a spring-animated accent-colored background with expanding padding. Spoken words show a subtle 8% white background tint. The "box" effect tracks the active word as it moves through the chunk. Uses the archetype's accent color.
+
+## Archetype-to-caption mapping
+
+| Caption Style | Archetypes | Chunk Size | Linger |
+|--------------|------------|------------|--------|
+| `clean` | cinematic_documentary, studio_realism, vintage_snapshot, warm_editorial | 4 (cinematic) / 5 (moderate) | 0.5s / 0.3s |
+| `bold_outline` | anime_illustration, editorial_caricature | 5 | 0.3s |
+| `color_highlight` | bold_illustration, comic_book | 6 | 0.15s |
+| `karaoke_sweep` | gothic_fantasy, surreal_dreamscape, warm_narrative | 5 (moderate) / 4 (cinematic) | 0.3s / 0.5s |
+| `gradient_rise` | pastoral_watercolor | 4 | 0.5s |
+| `block_impact` | moody_cinematic | 4 | 0.5s |
+| `box_highlight` | infographic | 6 | 0.15s |
+
+## Fonts
+
+Caption styles use four Google Fonts loaded via `@remotion/google-fonts`:
+
+| Font | Weights | Used by |
+|------|---------|---------|
+| Inter | 400, 500, 700 | `clean` |
+| Montserrat | 700, 900 | `bold_outline`, `color_highlight`, `karaoke_sweep`, `box_highlight` |
+| Playfair Display | 400, 700 | `gradient_rise` |
+| Oswald | 700 | `block_impact` |
+
+Text card beats use a separate font set (Inter, Merriweather, Space Grotesk) controlled by the archetype's `textCardFont` field.
+
+## Source files
+
+| File | Role |
+|------|------|
+| `src/remotion/captions/CaptionWrapper.tsx` | Shared wrapper: timing, word states, spring, chunk entrance |
+| `src/remotion/captions/Clean.tsx` | Clean style renderer |
+| `src/remotion/captions/BoldOutline.tsx` | Bold outline style renderer |
+| `src/remotion/captions/ColorHighlight.tsx` | Color highlight style renderer |
+| `src/remotion/captions/KaraokeSweep.tsx` | Karaoke sweep style renderer |
+| `src/remotion/captions/GradientRise.tsx` | Gradient rise style renderer |
+| `src/remotion/captions/BlockImpact.tsx` | Block impact style renderer |
+| `src/remotion/captions/BoxHighlight.tsx` | Box highlight style renderer |
+| `src/remotion/captions/caption-utils.ts` | `getWordChunk`, `computeWordStates`, `getWordState` utilities |
+| `src/remotion/lib/fonts.ts` | Font loading configuration |
