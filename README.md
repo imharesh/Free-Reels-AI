@@ -13,11 +13,17 @@ Maintained by **Haresh** — [GitHub](https://github.com/imharesh) · [Portfolio
 
 ## Demo
 
-Three Shorts made with Free Reels AI. Click a link to play the video.
+Three vertical Shorts made with Free Reels AI. Click a reel to watch the full video.
 
-- ▶️ [**Video 3**](assets/real-data/final-3.mp4)
-- ▶️ [**Video 1**](assets/real-data/final-1.mp4)
-- ▶️ [**Video 2**](assets/real-data/final-2.mp4)
+<div align="center">
+<table>
+<tr>
+<td><a href="assets/real-data/final-3.mp4"><img src=".github/assets/video-3-preview.gif" alt="Video 3" width="225" /></a></td>
+<td><a href="assets/real-data/final-1.mp4"><img src=".github/assets/video-1-preview.gif" alt="Video 1" width="225" /></a></td>
+<td><a href="assets/real-data/final-2.mp4"><img src=".github/assets/video-2-preview.gif" alt="Video 2" width="225" /></a></td>
+</tr>
+</table>
+</div>
 
 ## Screens
 
